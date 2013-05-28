@@ -1,0 +1,100 @@
+# depslib dependency file v1.0
+1369718286 source:c:\projects\siwir2\ex02cb\main.cpp
+	"FEM.h"
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\colsamm.h
+	<iostream>
+	<cmath>
+	<typeinfo>
+	<cassert>
+	<complex>
+	<vector>
+	<typeinfo>
+	"Loops.h"
+	"Loops.C"
+	"Polynom.h"
+	"Polynom.C"
+	"Gauss_Points.h"
+	"Gauss_Points.C"
+	"VertexComputations.h"
+	"VertexComputations.C"
+	"Mapping.h"
+	"Mapping.C"
+	"BasisFunctions.h"
+	"BasisFunctions.C"
+	"Domain.h"
+	"Domain.C"
+	"Stencil.h"
+	"Stencil.C"
+	"CT_Manip.h"
+	"CT_Manip.C"
+	"Stencil_ET.h"
+	"Stencil_ET.C"
+	"CT_Manip_ET.h"
+	"CT_Manip_ET.C"
+	"Integrand_Vector.h"
+	"Integrand_Vector.C"
+	"Elements.h"
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\loops.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\loops.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\polynom.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\polynom.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\gauss_points.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\gauss_points.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\vertexcomputations.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\vertexcomputations.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\mapping.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\mapping.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\basisfunctions.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\basisfunctions.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\domain.h
+
+1171399345 c:\projects\siwir2\ex02cb\colsamm\domain.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\stencil.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\stencil.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\ct_manip.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\ct_manip.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\stencil_et.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\stencil_et.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\ct_manip_et.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\ct_manip_et.c
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\integrand_vector.h
+
+1171027445 c:\projects\siwir2\ex02cb\colsamm\integrand_vector.c
+
+1369646252 c:\projects\siwir2\ex02cb\colsamm\elements.h
+
+1369718207 source:c:\projects\siwir2\ex02cb\fem.cpp
+	"FEM.h"
+	<iostream>
+	<fstream>
+	<sstream>
+	"Colsamm\Colsamm.h"
+
+1369719045 c:\projects\siwir2\ex02cb\fem.h
+	<iostream>
+	<map>
+	<vector>
+
