@@ -3,13 +3,80 @@
 #include <fstream>
 #include <sstream>
 #include "Colsamm/Colsamm.h"
+#include <iomanip>
 
 using namespace std;
 using namespace ::_COLSAMM_;
 
 double FEM::delta = 0;
 
-double FEM::DotProduct(const vector<double> &x, const vector<double> &y){
+int FEM::InsertVertex(FemVec &coords, FemVertices &vertexList){
+    //this assumes that the maximum index in the vertexList is always (vertexList.size()-1)
+    int numVertices = vertexList.size();
+    FemVertices::iterator it = vertexList.begin();
+    for (; it != vertexList.end(); ++it){
+        if (it->second[0] == coords[0] && it->second[1] == coords[1])
+            break;
+    }
+    if (it == vertexList.end()){ //this pair of coordinates is not in the vertexList
+        vertexList[numVertices] = coords;  //add it to the vertexList with index = numVertices
+        return numVertices;
+    }
+    else return it->first;
+}
+
+void FEM::SplitFaces(){
+    for (int lvl = 0; lvl < nLevel; ++lvl){ //Split at level lvl
+        int numFaces = faces.size();
+        for (int iface=0; iface<numFaces; ++iface){
+            int vertex0 = faces[iface][0];
+            int vertex1 = faces[iface][1];
+            int vertex2 = faces[iface][2];
+
+            FemVec &coords0 = vertices[vertex0];
+            FemVec &coords1 = vertices[vertex1];
+            FemVec &coords2 = vertices[vertex2];
+
+            FemVec coords01, coords02, coords12; //coordinates of middle points of edges (0,1), (0,2), (1,2)
+            coords01.push_back((coords0[0]+coords1[0])/2);
+            coords01.push_back((coords0[1]+coords1[1])/2);
+
+            coords02.push_back((coords0[0]+coords2[0])/2);
+            coords02.push_back((coords0[1]+coords2[1])/2);
+
+            coords12.push_back((coords1[0]+coords2[0])/2);
+            coords12.push_back((coords1[1]+coords2[1])/2);
+
+            //insert coord01, coord02, coord12 into vertices
+            int vertex01 = InsertVertex(coords01,vertices);
+            int vertex02 = InsertVertex(coords02,vertices);
+            int vertex12 = InsertVertex(coords12,vertices);
+
+            //replace the current face by the top face
+            faces[iface][1] = vertex01;
+            faces[iface][2] = vertex02;
+
+            //add the other 3 faces
+            vector<int> face1, face2, face3;
+            face1.push_back(vertex01);
+            face1.push_back(vertex1);
+            face1.push_back(vertex12);
+
+            face2.push_back(vertex01);
+            face2.push_back(vertex02);
+            face2.push_back(vertex12);
+
+            face3.push_back(vertex02);
+            face3.push_back(vertex2);
+            face3.push_back(vertex12);
+
+            faces.push_back(face1);
+            faces.push_back(face2);
+            faces.push_back(face3);
+        }
+    }
+}
+double FEM::DotProduct(FemVec &x, FemVec &y){
     if (x.size() != y.size()){
         cerr<<"Matrix size mismatch when calculating dot product"<<endl;
         return 0.0;
@@ -20,57 +87,45 @@ double FEM::DotProduct(const vector<double> &x, const vector<double> &y){
     return result;
 }
 
-double FEM::CalculateNorm2(const vector<double> &u){
+double FEM::CalculateNorm2(FemVec &u){
     return DotProduct(u,u); //square of norm of u
 }
 
-void FEM::CalculateBx(vector<double> &result,  FemMat &B, const vector<double> &x){
-    for (unsigned int row=0; row<x.size(); ++row){
-        FemMat::iterator i = B.find(row); //check row is present in Mh
-        if (i != B.end()){  //yes row is present in Mh
-            double sum = 0.0;
-            for (map<int,double>::iterator j = i->second.begin(); j != i->second.end(); ++j)
-                sum += j->second * x[j->first];  //multiply row of Mh with u
-            result[row] = sum;
-        }
-        else{ //row k is not present in Mh, i.e. this row of Mh is zero
-            result[row] = 0.0;
-        }
+void FEM::CalculateBx(FemVec &result,  FemMat &B, FemVec &x){
+    for (FemMat::iterator i = B.begin(); i != B.end(); ++i){
+        double sum = 0.0;
+        for (map<int,double>::iterator j = i->second.begin(); j != i->second.end(); ++j)
+            sum += j->second * x[j->first];  //multiply row of Mh with u
+        result[i->first] = sum;
     }
 }
 
-void FEM::CalculateResidual(vector<double> &result, const vector<double> &f, FemMat &B, const vector<double> &x){
-    for (unsigned int row=0; row<x.size(); ++row){
-        FemMat::iterator i = B.find(row); //check row is present in Mh
-        if (i != B.end()){  //yes row is present in Ah
-            double sum = 0.0;
-            for (map<int,double>::iterator j = i->second.begin(); j != i->second.end(); ++j)
-                sum += j->second * x[j->first];  //multiply row of Mh with u
-            result[row] = f[row] - sum;
-        }
-        else{ //row k is not present in Mh, i.e. this row of Mh is zero
-            result[row] = f[row];
-        }
+void FEM::CalculateResidual(FemVec &result, FemVec &f, FemMat &B, FemVec &x){
+    for (FemMat::iterator i = B.begin(); i != B.end(); ++i){
+        double sum = 0.0;
+        for (map<int,double>::iterator j = i->second.begin(); j != i->second.end(); ++j)
+            sum += j->second * x[j->first];  //multiply row of Mh with u
+        result[i->first] = f[i->first] - sum;
     }
 }
 
-void FEM::UpdateVector(vector<double> &result, double coefficient, vector<double> &x){
+void FEM::UpdateVector(FemVec &result, double coefficient, FemVec &x){
     for (unsigned int i=0; i<x.size(); ++i){
         result[i] += coefficient * x[i];
     }
 }
 
-void FEM::UpdateSearchVector(vector<double> &result, double coefficient, vector<double> &x){
+void FEM::UpdateSearchVector(FemVec &result, double coefficient, FemVec &x){
     for (unsigned int i=0; i<x.size(); ++i){
         result[i] = x[i] + coefficient * result[i];
     }
 }
 
-void FEM::ConjugateGradientSolve(vector<double> &result, const vector<double> &f){
-    vector<double> Ad = vector<double>(result.size(),0.0);
-    vector<double> r = vector<double>(result.size(),0.0);
+void FEM::ConjugateGradientSolve(FemVec &result, FemVec &f){
+    FemVec Ad = result;
+    FemVec r = result;
     CalculateResidual(r,f,A,result);   //first residual
-    vector<double> d = r;   //first search vector
+    FemVec d = r;   //first search vector
     double normr2 = CalculateNorm2(r);
     double epsilon2 = epsilon*epsilon;
     while (normr2>epsilon2){
@@ -81,46 +136,39 @@ void FEM::ConjugateGradientSolve(vector<double> &result, const vector<double> &f
         double normr2next = CalculateNorm2(r);
         UpdateSearchVector(d,normr2next/normr2,r);
         normr2 = normr2next;
-        //cout<<normr2<<endl;
     }
 }
 
-void FEM::GaussSeidelSolve(vector<double> &result, const vector<double> &f){
-    vector<double> Ad = vector<double>(result.size(),0.0);
-    vector<double> r = vector<double>(result.size(),0.0);
+void FEM::GaussSeidelSolve(FemVec &result, FemVec &f){
+    FemVec Ad = result;
+    FemVec r = result;
     CalculateResidual(r,f,A,result);   //first residual
-    vector<double> d = r;   //first search vector
+    FemVec d = r;   //first search vector
     double normr2 = CalculateNorm2(r);
     double epsilon2 = epsilon*epsilon;
     while (normr2>epsilon2){
-        for (unsigned int row=0; row<result.size(); ++row){
-            FemMat::iterator i = A.find(row); //check row is present in Mh
-            if (i != A.end()){  //yes row is present in Ah
+        for (FemMat::iterator i = A.begin(); i != A.end(); ++i){
                 double sum = 0.0;
-                double aii = 0.0;
+                double aii = 1.0;
                 for (map<int,double>::iterator j = i->second.begin(); j != i->second.end(); ++j)
-                    if (j->first != row)
+                    if (j->first != i->first)
                         sum += j->second * result[j->first];  //multiply row of Mh with u
                     else
                         aii = j->second;
-                result[row] = (f[row] - sum) / aii;
-            }
-            else{ //row k is not present in Mh, i.e. this row of Mh is zero
-                result[row] = 0;
-            }
+                result[i->first] = (f[i->first] - sum) / aii;
         }
         CalculateResidual(r,f,A,result);
         normr2 = CalculateNorm2(r);
     }
 }
 
-void FEM::Normalize(vector<double> &u){
+void FEM::Normalize(FemVec &u){
     double normu = sqrt(CalculateNorm2(u));
     for (unsigned int i=0; i<u.size(); ++i)
         u[i] /= normu;
 }
 
-double FEM::CalculateLambda(const vector<double> &u){
+double FEM::CalculateLambda(FemVec &u){
     CalculateBx(Au,A,u);
     double numerator = DotProduct(u,Au); //Calculate numerator
     double denominator = DotProduct(u,F); //Calculate denominator
@@ -130,10 +178,11 @@ double FEM::CalculateLambda(const vector<double> &u){
 void FEM::SolveEigenProblem(){
     lambda = 0.0;
     double lambdaOld = 1.0;
-    U = vector<double>(vertices.size(),1.0);
-    F = vector<double>(vertices.size(),0.0);
-    Au = vector<double>(vertices.size(),0.0);
-    int iter = 0;
+    U = FemVec(A.size(),1.0); //set U to 1 to prevent trivial solution
+    F = FemVec(A.size(),0.0);
+    Au = FemVec(A.size(),0.0);
+
+    int iter = 1;
     while (fabs((lambda-lambdaOld)/lambdaOld)>pow((double)10.00,-10)){
         lambdaOld = lambda;
         CalculateBx(F,M,U);
@@ -141,7 +190,7 @@ void FEM::SolveEigenProblem(){
         //GaussSeidelSolve(U,F);   //solve linear system of equations to find U
         Normalize(U);
         lambda = CalculateLambda(U);
-        cout<<"lambda at iter "<<iter<<" = "<<lambda<<endl;
+        cout<<"lambda after iter "<<iter<<" = "<<setprecision(10)<<lambda<<endl;
         ++iter;
     }
 }
@@ -156,7 +205,7 @@ void FEM::SolveLocalMatrix(){
         //find local matrix for each face
         ELEMENTS::Triangle my_element;
         vector< vector< double > > my_local_matrix;
-        vector<double> corners(6, 0.0);
+        vector< double > corners(6, 0.0);
         // array corners contains the x- and y-coordinates of the
         // triangle corners in the order x0, y0, x1, y1, x2, y2
         int vertex0 = faces[i][0];
@@ -173,8 +222,7 @@ void FEM::SolveLocalMatrix(){
         my_element(corners);
 
         //Computer local matrix A
-        my_local_matrix =
-        my_element.integrate(grad(v_()) * grad(w_())-func<double>(K2)*v_()*w_());
+        my_local_matrix = my_element.integrate(grad(v_()) * grad(w_())-func<double>(K2)*v_()*w_());
         //transfering value from local matrix A to global matrix Ah
         A[vertex0][vertex0] += my_local_matrix[0][0];
         A[vertex0][vertex1] += my_local_matrix[0][1];
@@ -187,8 +235,7 @@ void FEM::SolveLocalMatrix(){
         A[vertex2][vertex2] += my_local_matrix[2][2];
 
         //compute local matrix M
-        my_local_matrix =
-        my_element.integrate(v_()*w_());
+        my_local_matrix = my_element.integrate(v_()*w_());
         //transfering value from local matrix M to global matrix Mh
         M[vertex0][vertex0] += my_local_matrix[0][0];
         M[vertex0][vertex1] += my_local_matrix[0][1];
@@ -215,12 +262,24 @@ void FEM::WriteMatrix(FemMat &mat, string filename){
 }
 
 void FEM::SolveAll(){
+    cout<<"delta = "<<delta<<", epsilon = "<<epsilon<<", refLvl = "<<nLevel<<endl;
+    cout<<endl;
+    if (nLevel>0)
+        cout<<"Splitting faces. Please be patient ..."<<endl<<endl<<"\"Breathe. Smile. and Go slowly.\""<<endl<<endl;
+    SplitFaces();
     WriteK2("ksq.txt");
     SolveLocalMatrix();
     WriteMatrix(A,"A.txt");
     WriteMatrix(M,"M.txt");
     SolveEigenProblem();
     WriteU("eigenmode.txt");
+    WriteLambda("lambda.txt");
+    if (nLevel>0){
+        cout<<endl<<"See! It's really simple. "<<endl;
+        cout<<endl<<"\"Just sit quietly, doing nothing, spring comes and the grass grows by itself.\""<<endl;
+        cout<<endl<<"Thank you for your patience. Have a wonderful day :^)"<<endl;
+    }
+    cout<<endl;
 }
 void FEM::ReadData(string filename){
     ifstream infile(filename.c_str());
@@ -249,7 +308,7 @@ void FEM::ReadData(string filename){
             cerr<<"error in reading line "<<lineNum<<endl;
             return;
         }
-        vector<double> point;
+        FemVec point;
         point.push_back(x);
         point.push_back(y);
         vertices[index] = point;
@@ -305,6 +364,14 @@ void FEM::WriteU(string filename){
             if (vertexIt != vertices.end())
                 outfile<<vertexIt->second[0]<<" "<<vertexIt->second[1]<<" "<<U[i]<<endl;
         }
+        outfile.close();
+    }
+}
+
+void FEM::WriteLambda(string filename){
+    ofstream outfile(filename.c_str());
+    if (outfile.good()){
+        outfile<<setprecision(10)<<lambda;
         outfile.close();
     }
 }

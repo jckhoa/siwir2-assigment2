@@ -2,7 +2,7 @@ CC = g++
 CFLAGS = -O3 -Wall -Wshadow -Winline -ansi -pedantic 
 LIBS = 
 INCLUDES = -I./Colsamm
-TARGET = mgsolve
+TARGET = waveguide
 
 SRC = $(wildcard *.cpp)
 OBJS = $(patsubst %.c, %.o, $(SRC))
